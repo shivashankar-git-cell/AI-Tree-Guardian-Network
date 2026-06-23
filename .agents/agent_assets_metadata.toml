@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "kh1XJzoJj1XakrtLH2vjQ"
+uri = "file://artifacts/tree-guardian/public/hero-canopy.png"
+type = "image"
+title = "Lush tree canopy sunlight"

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AI Tree Guardian Network"
+version = "1.0.0"
+id = "artifacts/tree-guardian"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18128
+
+[services.development]
+run = "pnpm --filter @workspace/tree-guardian run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tree-guardian", "run", "build" ]
+publicDir = "artifacts/tree-guardian/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18128"
+BASE_PATH = "/"
