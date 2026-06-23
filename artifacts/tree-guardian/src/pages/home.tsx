@@ -9,13 +9,11 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [passportData, setPassportData] = useState<PassportData | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async (imageBase64: string, file: File) => {
+  const handleAnalyze = async (imageBase64: string, _file: File) => {
     setImageUrl(imageBase64);
     setIsAnalyzing(true);
     setPassportData(null);
-    setError(null);
 
     try {
       const response = await fetch("/api/analyze-tree", {
@@ -24,22 +22,28 @@ export default function Home() {
         body: JSON.stringify({ imageBase64 }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-      const data = (await response.json()) as PassportData & { isMock?: boolean };
+      const data = (await response.json()) as PassportData;
       setPassportData(data);
     } catch (err) {
-      setError("Analysis failed. Showing sample data.");
+      console.error("Analysis failed:", err);
+      // Graceful fallback with camelCase keys matching PassportData
       setPassportData({
-        treeId: `TRE-${new Date().getFullYear()}-00001`,
+        treeId: `TREE-DEMO`,
         species: "Azadirachta indica (Neem)",
-        health_score: 62,
-        possible_issue: "Heat stress and soil moisture deficit",
+        healthScore: 62,
+        possibleIssue: "Heat stress and soil moisture deficit",
         recommendation:
-          "Water deeply every 2–3 days in the early morning. Apply organic mulch around the base to retain moisture during Hyderabad's hot summers.",
-        survival_risk: "Medium",
+          "Water deeply every 2–3 days in the early morning. Apply organic mulch around the base during Hyderabad's hot summers.",
+        survivalRisk: "Medium",
+        carbonAbsorbed: 22,
+        waterLogs: Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return { date: d.toISOString().split("T")[0], liters: 10 + i };
+        }),
+        isMock: true,
       });
     } finally {
       setIsAnalyzing(false);
@@ -54,13 +58,6 @@ export default function Home() {
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/20">
       <HeroSection />
       <UploadSection onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
-      {error && (
-        <div className="container max-w-4xl mx-auto px-4 pt-6">
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
-            {error}
-          </p>
-        </div>
-      )}
       <TreePassport isVisible={!!passportData} imageUrl={imageUrl} data={passportData} />
       <ImpactSection />
       <Footer />
