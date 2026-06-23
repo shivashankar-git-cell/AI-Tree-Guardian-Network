@@ -37,14 +37,16 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
     e.preventDefault();
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
+      // Clear input value so selecting the same file again fires onChange
+      e.target.value = "";
     }
   };
 
   const handleFile = (file: File) => {
     setSelectedFile(file);
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setSelectedImage(e.target?.result as string);
+    reader.onload = (ev) => {
+      setSelectedImage(ev.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -96,7 +98,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                 <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
                   <UploadCloud className="w-10 h-10 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Drag & Drop your photo</h3>
+                <h3 className="text-xl font-semibold mb-2">Drag &amp; Drop your photo</h3>
                 <p className="text-muted-foreground mb-6">or click to browse from your device</p>
 
                 <Button
@@ -145,7 +147,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                     {isAnalyzing ? (
                       <>
                         <Activity className="w-5 h-5 mr-2 animate-pulse" />
-                        Compressing &amp; Analyzing Image...
+                        Gemini AI Analyzing Plant...
                       </>
                     ) : (
                       "Analyze Tree"

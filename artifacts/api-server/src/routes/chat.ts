@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { HfInference } from "@huggingface/inference";
+import { GoogleGenAI } from "@google/genai";
 
 const router: IRouter = Router();
 
@@ -15,12 +15,6 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
-
-const FALLBACK_REPLIES = [
-  "I'm having trouble connecting to my knowledge base right now. Based on general arborist guidance: ensure your tree gets deep watering sessions (not frequent shallow ones) and keep the soil mulched to retain moisture in Hyderabad's heat.",
-  "I can't reach the AI service at the moment. A good general tip: trees under heat stress benefit most from early-morning watering and shade cloth during peak summer afternoons.",
-  "Service temporarily unavailable. General advice: check your tree's soil moisture 5 cm below the surface — if it's dry, water immediately. Hyderabad's dry heat can deceive; the surface looks dry long before roots are stressed.",
-];
 
 router.post("/chat", async (req, res) => {
   const {
@@ -38,55 +32,53 @@ router.post("/chat", async (req, res) => {
     return;
   }
 
-  const hfToken = process.env.HF_TOKEN;
-
-  if (!hfToken) {
-    req.log.warn("HF_TOKEN not set – returning fallback chat reply");
-    res.json({
-      reply: FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)],
-    });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    req.log.error("GEMINI_API_KEY not set");
+    res.status(500).json({ error: "Server configuration error: GEMINI_API_KEY is missing" });
     return;
   }
 
   const treeContext = passportData
-    ? `You are treating a ${passportData.species} tree with a health score of ${passportData.healthScore}/100. ` +
-      `Its current issue is: "${passportData.possibleIssue}". ` +
-      `Survival risk is ${passportData.survivalRisk}. ` +
-      `The recommended treatment is: "${passportData.recommendation}".`
-    : "No specific tree data is available.";
+    ? `You are treating a ${passportData.species} with a health score of ${passportData.healthScore}/100. ` +
+      `Current issue: "${passportData.possibleIssue}". ` +
+      `Survival risk: ${passportData.survivalRisk}. ` +
+      `Current recommendation: "${passportData.recommendation}".`
+    : "No specific tree data is available for this session.";
 
-  const systemPrompt =
-    `You are Tree Doctor Bot, an expert arborist AI assistant. ` +
-    `${treeContext} ` +
-    `The tree is located in Hyderabad, India — a hot, semi-arid climate with intense summers (up to 42°C), ` +
-    `moderate monsoons (June–September), and dry winters. ` +
-    `Answer the user's questions concisely and practically, tailoring all advice to this climate. ` +
-    `Keep replies under 120 words. Do not use markdown headers. Use plain conversational language.`;
+  const systemInstruction =
+    `You are Tree Doctor Bot, an expert arborist AI assistant. ${treeContext} ` +
+    `The plant is located in Hyderabad, India — hot, semi-arid climate with intense summers up to 42°C, ` +
+    `monsoons from June to September, and dry winters. ` +
+    `Answer concisely and practically, tailoring all advice to this specific plant and climate. ` +
+    `Keep replies under 120 words. Use plain conversational language. No markdown headers or bullet lists.`;
 
   try {
-    const hf = new HfInference(hfToken);
+    const ai = new GoogleGenAI({ apiKey });
 
-    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: systemPrompt },
-      ...history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: message },
-    ];
+    // Build Gemini-format history (assistant role = "model" in Gemini)
+    const geminiHistory = history.slice(-6).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
 
-    const completion = await hf.chatCompletion({
-      model: "meta-llama/Meta-Llama-3-8B-Instruct",
-      messages,
-      max_tokens: 200,
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: { systemInstruction },
+      contents: [
+        ...geminiHistory,
+        { role: "user", parts: [{ text: message }] },
+      ],
     });
 
-    const reply = completion.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!reply) throw new Error("Empty reply from model");
+    const reply = response.text?.trim() ?? "";
+    if (!reply) throw new Error("Empty reply from Gemini");
 
     res.json({ reply });
   } catch (err) {
-    req.log.error({ err }, "Chat inference failed – returning fallback");
-    res.json({
-      reply: FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)],
-    });
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log.error({ err }, "Gemini chat inference failed");
+    res.status(500).json({ error: `Chat failed: ${msg}` });
   }
 });
 
