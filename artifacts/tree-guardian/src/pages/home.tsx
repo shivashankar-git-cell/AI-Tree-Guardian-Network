@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { AlertCircle } from "lucide-react";
 import { HeroSection } from "@/components/home/HeroSection";
 import { UploadSection } from "@/components/home/UploadSection";
 import { TreePassport, type PassportData } from "@/components/home/TreePassport";
@@ -11,11 +12,13 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [passportData, setPassportData] = useState<PassportData | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const handleAnalyze = async (imageBase64: string, _file: File) => {
     setImageUrl(imageBase64);
     setIsAnalyzing(true);
     setPassportData(null);
+    setAnalysisError(null);
 
     try {
       const response = await fetch("/api/analyze-tree", {
@@ -24,33 +27,21 @@ export default function Home() {
         body: JSON.stringify({ imageBase64 }),
       });
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(errBody.error ?? `Server error: ${response.status}`);
+      }
 
       const data = (await response.json()) as PassportData;
       setPassportData(data);
     } catch (err) {
-      console.error("Analysis failed:", err);
-      setPassportData({
-        treeId: "TREE-DEMO",
-        species: "Azadirachta indica (Neem)",
-        healthScore: 62,
-        possibleIssue: "Heat stress and soil moisture deficit",
-        recommendation:
-          "Water deeply every 2–3 days in the early morning. Apply organic mulch around the base during Hyderabad's hot summers.",
-        survivalRisk: "Medium",
-        carbonAbsorbed: 22,
-        waterLogs: Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (6 - i));
-          return { date: d.toISOString().split("T")[0], liters: 10 + i };
-        }),
-        isMock: true,
-      });
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setAnalysisError(`AI Analysis Failed: ${msg}`);
     } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
-        const el = document.getElementById("tree-analysis");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        const target = document.getElementById("tree-analysis") ?? document.getElementById("analysis-error");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     }
   };
@@ -60,6 +51,32 @@ export default function Home() {
       <HeroSection />
       <UploadSection onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
 
+      {/* Error banner */}
+      <AnimatePresence>
+        {analysisError && !passportData && (
+          <motion.div
+            id="analysis-error"
+            key="error"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="container px-4 max-w-4xl mx-auto mt-8"
+          >
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-4 dark:bg-red-900/20 dark:border-red-800/40 dark:text-red-300">
+              <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">Analysis Failed</p>
+                <p className="text-sm mt-0.5">{analysisError}</p>
+                <p className="text-xs mt-2 text-red-600 dark:text-red-400">
+                  Please try again with a clear, well-lit photo of the tree or plant.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Passport + chat panel */}
       <AnimatePresence>
         {passportData && (
           <motion.section
@@ -72,17 +89,8 @@ export default function Home() {
             className="py-12 bg-background"
           >
             <div className="container px-4 max-w-7xl mx-auto">
-              {passportData.isMock && (
-                <div className="mb-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
-                  Showing sample data — AI analysis was unavailable. Results have been saved.
-                </div>
-              )}
-
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-                {/* Digital Tree Passport */}
                 <TreePassport imageUrl={imageUrl} data={passportData} />
-
-                {/* Tree Doctor Bot */}
                 <div className="xl:sticky xl:top-8">
                   <TreeDoctorBot passportData={passportData} />
                 </div>

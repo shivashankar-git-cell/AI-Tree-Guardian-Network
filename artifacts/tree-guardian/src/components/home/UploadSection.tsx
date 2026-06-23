@@ -145,7 +145,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                     {isAnalyzing ? (
                       <>
                         <Activity className="w-5 h-5 mr-2 animate-pulse" />
-                        Analyzing...
+                        Compressing &amp; Analyzing Image...
                       </>
                     ) : (
                       "Analyze Tree"
