@@ -22,7 +22,6 @@ export interface PassportData {
 }
 
 interface TreePassportProps {
-  isVisible: boolean;
   imageUrl: string | null;
   data: PassportData | null;
 }
@@ -73,8 +72,8 @@ function WaterChart({ logs }: { logs: WaterLog[] }) {
   );
 }
 
-export function TreePassport({ isVisible, imageUrl, data }: TreePassportProps) {
-  if (!isVisible || !data) return null;
+export function TreePassport({ imageUrl, data }: TreePassportProps) {
+  if (!data) return null;
 
   const healthScore = Math.min(100, Math.max(0, data.healthScore));
   const avgWater =
@@ -83,21 +82,12 @@ export function TreePassport({ isVisible, imageUrl, data }: TreePassportProps) {
       : "—";
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 40 }}
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, type: "spring", bounce: 0.3 }}
-      className="py-12 bg-background"
-      id="passport"
+      transition={{ duration: 0.5, type: "spring", bounce: 0.25 }}
     >
-      <div className="container px-4 max-w-4xl mx-auto">
-        {data.isMock && (
-          <div className="mb-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
-            Showing sample data — AI analysis was unavailable. Results have been saved.
-          </div>
-        )}
-
-        <Card className="overflow-hidden border-2 border-primary/20 shadow-2xl bg-card">
+        <Card className="overflow-hidden border-2 border-primary/20 shadow-2xl bg-card h-full">
           {/* Header */}
           <div className="bg-primary/5 border-b border-primary/10 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -250,7 +240,6 @@ export function TreePassport({ isVisible, imageUrl, data }: TreePassportProps) {
             </div>
           </div>
         </Card>
-      </div>
-    </motion.section>
+    </motion.div>
   );
 }

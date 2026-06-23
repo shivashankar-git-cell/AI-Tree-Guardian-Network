@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { HeroSection } from "@/components/home/HeroSection";
 import { UploadSection } from "@/components/home/UploadSection";
 import { TreePassport, type PassportData } from "@/components/home/TreePassport";
+import { TreeDoctorBot } from "@/components/home/TreeDoctorBot";
 import { ImpactSection } from "@/components/home/ImpactSection";
 import { Footer } from "@/components/home/Footer";
 
@@ -28,9 +30,8 @@ export default function Home() {
       setPassportData(data);
     } catch (err) {
       console.error("Analysis failed:", err);
-      // Graceful fallback with camelCase keys matching PassportData
       setPassportData({
-        treeId: `TREE-DEMO`,
+        treeId: "TREE-DEMO",
         species: "Azadirachta indica (Neem)",
         healthScore: 62,
         possibleIssue: "Heat stress and soil moisture deficit",
@@ -48,7 +49,7 @@ export default function Home() {
     } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
-        const el = document.getElementById("passport");
+        const el = document.getElementById("tree-analysis");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     }
@@ -58,7 +59,39 @@ export default function Home() {
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/20">
       <HeroSection />
       <UploadSection onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
-      <TreePassport isVisible={!!passportData} imageUrl={imageUrl} data={passportData} />
+
+      <AnimatePresence>
+        {passportData && (
+          <motion.section
+            key="tree-analysis"
+            id="tree-analysis"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="py-12 bg-background"
+          >
+            <div className="container px-4 max-w-7xl mx-auto">
+              {passportData.isMock && (
+                <div className="mb-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
+                  Showing sample data — AI analysis was unavailable. Results have been saved.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                {/* Digital Tree Passport */}
+                <TreePassport imageUrl={imageUrl} data={passportData} />
+
+                {/* Tree Doctor Bot */}
+                <div className="xl:sticky xl:top-8">
+                  <TreeDoctorBot passportData={passportData} />
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
       <ImpactSection />
       <Footer />
     </div>
