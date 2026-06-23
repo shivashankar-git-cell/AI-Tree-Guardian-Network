@@ -1,16 +1,17 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, Image as ImageIcon, X, Activity } from "lucide-react";
+import { UploadCloud, X, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface UploadSectionProps {
-  onAnalyze: (imageUrl: string) => void;
+  onAnalyze: (imageBase64: string, file: File) => void;
   isAnalyzing: boolean;
 }
 
 export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -40,6 +41,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
   };
 
   const handleFile = (file: File) => {
+    setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target?.result as string);
@@ -49,8 +51,15 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
 
   const clearImage = () => {
     setSelectedImage(null);
+    setSelectedFile(null);
     if (inputRef.current) {
       inputRef.current.value = "";
+    }
+  };
+
+  const handleAnalyzeClick = () => {
+    if (selectedImage && selectedFile) {
+      onAnalyze(selectedImage, selectedFile);
     }
   };
 
@@ -73,6 +82,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          data-testid="upload-dropzone"
         >
           <AnimatePresence mode="wait">
             {!selectedImage ? (
@@ -88,11 +98,12 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Drag & Drop your photo</h3>
                 <p className="text-muted-foreground mb-6">or click to browse from your device</p>
-                
-                <Button 
-                  onClick={() => inputRef.current?.click()} 
-                  size="lg" 
+
+                <Button
+                  onClick={() => inputRef.current?.click()}
+                  size="lg"
                   className="pointer-events-auto shadow-md"
+                  data-testid="button-select-photo"
                 >
                   Select Photo
                 </Button>
@@ -108,6 +119,7 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                   src={selectedImage}
                   alt="Tree preview"
                   className="w-full h-[400px] object-cover rounded-xl"
+                  data-testid="img-tree-preview"
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
                   <Button
@@ -116,17 +128,19 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
                     className="rounded-full shadow-lg bg-background/80 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
                     onClick={clearImage}
                     disabled={isAnalyzing}
+                    data-testid="button-clear-image"
                   >
                     <X className="w-5 h-5" />
                   </Button>
                 </div>
-                
+
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent flex justify-center">
                   <Button
                     size="lg"
                     className="w-full max-w-sm text-lg font-semibold shadow-xl"
-                    onClick={() => onAnalyze(selectedImage)}
-                    disabled={isAnalyzing}
+                    onClick={handleAnalyzeClick}
+                    disabled={isAnalyzing || !selectedFile}
+                    data-testid="button-analyze-tree"
                   >
                     {isAnalyzing ? (
                       <>
@@ -141,13 +155,14 @@ export function UploadSection({ onAnalyze, isAnalyzing }: UploadSectionProps) {
               </motion.div>
             )}
           </AnimatePresence>
-          
+
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
             onChange={handleChange}
             className="hidden"
+            data-testid="input-file-upload"
           />
         </div>
       </div>
